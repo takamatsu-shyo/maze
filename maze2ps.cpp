@@ -1,92 +1,92 @@
-#include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
 
 using namespace std;
 
-const double kPageWidth = 595.0;  // A4 page width in points
-const double kPageHeight = 842.0; // A4 page height in points
-const double kMargin = 20.0;      // margin around the maze in points
-const double kCellSize = 20.0;    // size of each maze cell in points
-const double kLineWidth = 2.0;    // width of maze walls in points
+// 1インチあたりのポイント数
+const int POINTS_PER_INCH = 72;
 
-void drawLine(ofstream &file, double x1, double y1, double x2, double y2, double width)
-{
-    file << x1 << " " << y1 << " moveto " << x2 << " " << y2 << " lineto "
-         << width << " setlinewidth " << " stroke" << endl;
+// 余白を指定する
+const double MARGIN = 0.5 * POINTS_PER_INCH;
+
+// 迷路の各セルを描画する際のサイズを指定する
+const double CELL_SIZE = 30.0;
+
+// PostScriptファイルを生成する関数
+void generatePostScript(vector<string> maze) {
+  // 迷路の幅と高さを決定する
+  int width = 0;
+  int height = maze.size();
+  for (const string &row : maze) {
+    if (row.size() > width) {
+      width = row.size();
+    }
+  }
+
+  // ページサイズを決定する
+  double pageWidth = (double)width * CELL_SIZE + 2.0 * MARGIN;
+  double pageHeight = (double)height * CELL_SIZE + 2.0 * MARGIN;
+
+  // PostScriptファイルを生成する
+  cout << "%!PS-Adobe-3.0" << endl;
+  cout << "%%BoundingBox: 0 0 " << pageWidth << " " << pageHeight << endl;
+
+  // ページを開始する
+  cout << "%%Page: 1 1" << endl;
+  cout << "0 0 translate" << endl;
+
+  // 迷路を描画する
+  for (int i = 0; i < height; i++) {
+    for (int j = 0; j < maze[i].size(); j++) {
+      char c = maze[i][j];
+      switch (c) {
+      case '+':
+        cout << "newpath" << endl;
+        cout << j * CELL_SIZE + MARGIN << " "
+             << (height - i - 1) * CELL_SIZE + MARGIN << " moveto" << endl;
+        cout << "0 " << CELL_SIZE << " rlineto" << endl;
+        cout << CELL_SIZE << " 0 rlineto" << endl;
+        cout << "0 -" << CELL_SIZE << " rlineto" << endl;
+        cout << "-" << CELL_SIZE << " 0 rlineto" << endl;
+        cout << "closepath" << endl;
+        cout << "stroke" << endl;
+        break;
+      case '-':
+        cout << "newpath" << endl;
+        cout << j * CELL_SIZE + MARGIN << " "
+             << (height - i - 1) * CELL_SIZE + MARGIN + CELL_SIZE / 2
+             << " moveto" << endl;
+        cout << CELL_SIZE << " 0 rlineto" << endl;
+        cout << "stroke" << endl;
+        break;
+      case '|':
+        cout << "newpath" << endl;
+        cout << j * CELL_SIZE + MARGIN + CELL_SIZE / 2 << " "
+             << (height - i - 1) * CELL_SIZE + MARGIN << " moveto" << endl;
+        cout << "0 " << CELL_SIZE << " rlineto" << endl;
+        cout << "stroke" << endl;
+        break;
+      case ' ':
+        // 通れるセルは何も描画しない
+        break;
+      }
+    }
+  }
+  // ページを終了する
+  cout << "showpage" << endl;
 }
 
-void drawMaze(const vector<string> &maze, ofstream &file)
-{
-    double x = kMargin + kLineWidth / 2.0;
-    double y = kMargin + kLineWidth / 2.0;
-    file << "newpath" << endl;
-    drawLine(file, x, y, x, y + kCellSize * (maze.size() - 1), kLineWidth);    // left wall of maze
-    drawLine(file, x, y, x + kCellSize * (maze[0].size() - 1), y, kLineWidth); // top wall of maze
+int main() {
+  // 迷路のデータを読み込む
+  vector<string> maze;
+  string line;
+  while (getline(cin, line)) {
+    maze.push_back(line);
+  }
 
-    std::cout << maze.size() << std::endl;
+  // PostScriptファイルを生成する
+  generatePostScript(maze);
 
-    for (int i = 0; i < maze.size(); ++i)
-    {
-        for (int j = 0; j < maze[i].size(); ++j)
-        {
-            if (maze[i][j] == '+')
-            {
-                // draw corners of maze cell
-                double cx = x + kCellSize * j;
-                double cy = y + kCellSize * i;
-                drawLine(file, cx - kLineWidth / 2.0, cy + kCellSize + kLineWidth / 2.0, cx + kLineWidth / 2.0,
-                         cy + kCellSize + kLineWidth / 2.0, kLineWidth);
-                drawLine(file, cx + kCellSize + kLineWidth / 2.0, cy + kCellSize + kLineWidth / 2.0,
-                         cx + kCellSize + kLineWidth / 2.0, cy + kLineWidth / 2.0, kLineWidth);
-                drawLine(file, cx + kCellSize + kLineWidth / 2.0, cy + kLineWidth / 2.0,
-                         cx + kCellSize - kLineWidth / 2.0, cy + kLineWidth / 2.0, kLineWidth);
-                drawLine(file, cx + kLineWidth / 2.0, cy + kLineWidth / 2.0, cx + kLineWidth / 2.0,
-                         cy + kCellSize - kLineWidth / 2.0, kLineWidth);
-            }
-            else if (maze[i][j] == '-')
-            {
-                // draw horizontal wall
-                double cx = x + kCellSize * j;
-                double cy = y + kCellSize * i;
-                drawLine(file, cx + kLineWidth / 2.0, cy + kCellSize + kLineWidth / 2.0,
-                         cx + kCellSize - kLineWidth / 2.0, cy + kCellSize + kLineWidth / 2.0, kLineWidth);
-            }
-            else if (maze[i][j] == '|')
-            {
-                // draw vertical wall
-                double cx = x + kCellSize * j;
-                double cy = y + kCellSize * i;
-                drawLine(file, cx + kCellSize + kLineWidth / 2.0, cy + kCellSize + kLineWidth / 2.0,
-                         cx + kCellSize + kLineWidth / 2.0, cy + kLineWidth / 2.0, kLineWidth);
-            }
-        }
-    }
-}
-
-int main()
-{
-    // read maze from stdin
-    vector<string> maze;
-    string line;
-    while (getline(cin, line))
-    {
-        maze.push_back(line);
-    }
-
-    // create output file and write PostScript header
-    ofstream file("maze.ps");
-    file << "%!PS-Adobe-3.0" << endl;
-    file << "%%BoundingBox: 0 0 " << kPageWidth << " " << kPageHeight << endl;
-    file << "%%EndComments" << endl;
-
-    // draw maze
-    drawMaze(maze, file);
-
-    // write PostScript trailer and close file
-    file << "showpage" << endl;
-    file.close();
-
-    return 0;
+  return 0;
 }
